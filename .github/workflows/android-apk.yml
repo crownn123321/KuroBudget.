@@ -50,10 +50,10 @@ jobs:
 
       - name: Install dependencies
         run: |
-        node --version
-        npm --version
-        npm cache clean --force
-        npm install --no-audit --no-fund --legacy-peer-deps
+          node --version
+          npm --version
+          npm cache clean --force
+          npm install --no-audit --no-fund --legacy-peer-deps
 
       - name: Generate Android project
         run: npm run android:init
