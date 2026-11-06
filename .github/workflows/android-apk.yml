@@ -79,6 +79,10 @@ jobs:
           npm --version
           npm install --no-audit --no-fund --legacy-peer-deps
 
+      - name: Install compatible TypeScript
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: npm install --no-save --no-audit --no-fund typescript@5.9.3
+        
       - name: Generate Android project
         working-directory: ${{ env.PROJECT_DIR }}
         run: npm run android:init
