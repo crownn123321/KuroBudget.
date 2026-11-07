@@ -1,5 +1,4 @@
-
-name: Build KuroBudget APK
+name: Build Tipid Kunuhay APK
 
 on:
   workflow_dispatch:
@@ -36,20 +35,53 @@ jobs:
       - name: Extract project ZIP
         shell: bash
         run: |
-          set -e
-          unzip -q KuroBudget-Android-Ready-v2.zip -d extracted
+          set -euo pipefail
+          mkdir -p extracted
 
-          PACKAGE_JSON=$(find extracted -name package.json \
-            -not -path '*/node_modules/*' | head -n 1)
+          # Find every .zip in the repo (any name, any folder)
+          mapfile -d '' ZIPS < <(
+            find . -type f -iname '*.zip' \
+              -not -path './extracted/*' \
+              -not -path './.git/*' \
+              -not -path '*/node_modules/*' \
+              -print0 | sort -z
+          )
+
+          if [ "${#ZIPS[@]}" -eq 0 ]; then
+            echo "ERROR: no .zip file found in the repository"
+            exit 1
+          fi
+
+          # Extract each zip into its own numbered folder (avoids name clashes)
+          i=0
+          for z in "${ZIPS[@]}"; do
+            i=$((i+1))
+            echo "Extracting: $z -> extracted/$i"
+            unzip -q -o "$z" -d "extracted/$i"
+          done
+
+          # Prefer a package.json that is a Capacitor project
+          mapfile -t CANDIDATES < <(
+            grep -rl --include=package.json --exclude-dir=node_modules \
+              '@capacitor/core' extracted | sort
+          )
+          PACKAGE_JSON="${CANDIDATES[0]:-}"
+
+          # Fallback: any package.json at all
+          if [ -z "$PACKAGE_JSON" ]; then
+            mapfile -t ANY < <(
+              find extracted -name package.json -not -path '*/node_modules/*' | sort
+            )
+            PACKAGE_JSON="${ANY[0]:-}"
+          fi
 
           if [ -z "$PACKAGE_JSON" ]; then
-            echo "ERROR: package.json not found in ZIP"
+            echo "ERROR: package.json not found in any ZIP"
             exit 1
           fi
 
           PROJECT_DIR=$(dirname "$PACKAGE_JSON")
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-
           echo "Project directory: $PROJECT_DIR"
 
       - name: Install Android SDK packages
@@ -82,7 +114,7 @@ jobs:
       - name: Install compatible TypeScript
         working-directory: ${{ env.PROJECT_DIR }}
         run: npm install --no-save --no-audit --no-fund --legacy-peer-deps typescript@5.9.3
-        
+
       - name: Generate Android project
         working-directory: ${{ env.PROJECT_DIR }}
         run: npm run android:init
@@ -94,7 +126,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: KuroBudget-debug-apk
+          name: TipidKunuhay-debug-apk
           path: ${{ env.PROJECT_DIR }}/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
